@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoring Smart Greenhouse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #131f30;
+    --card: #1b2638;
+    --card-2: #232f44;
+    --line: #28354b;
+    --ink: #eef2f8;
+    --muted: #8b98ad;
+    --green: #4ade80;
+    --red: #f87171;
+    --teal: #2dd4bf;
+    --blue: #60a5fa;
+    --amber: #fbbf24;
+    --font: "Poppins", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.45; }
+
+  header { padding: 26px 56px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: clamp(22px, 3.6vw, 38px); font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+
+  main { padding: 36px 56px 56px; max-width: 1400px; margin: 0 auto; }
+
+  /* Banner status koneksi */
+  .banner { display: flex; align-items: center; gap: 14px; padding: 22px 28px; border-radius: 16px; border: 1px solid #1c4a33; background: #102a1f; color: var(--green); font-weight: 500; font-size: 20px; margin-bottom: 26px; }
+  .banner i { width: 14px; height: 14px; border-radius: 50%; background: var(--green); flex: none; }
+  .banner small { color: inherit; opacity: .7; font-size: 15px; font-weight: 400; }
+  .banner.wait { background: var(--card); border-color: var(--line); color: var(--muted); }
+  .banner.wait i { background: var(--muted); }
+  .banner.off { background: #2b1618; border-color: #5a2a2e; color: var(--red); }
+  .banner.off i { background: var(--red); }
+
+  .grid { display: grid; gap: 26px; margin-bottom: 26px; }
+  .row1 { grid-template-columns: 2fr 1fr 1fr; }
+  .row2 { grid-template-columns: repeat(4, 1fr); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 34px 36px; display: flex; flex-direction: column; min-height: 250px; }
+  .card.accent { border-top: 4px solid var(--teal); }
+  .label { font-size: 15px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; }
+  .big { font-size: clamp(64px, 9vw, 110px); font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 6px 0 auto; }
+  .mid { font-size: clamp(34px, 4vw, 46px); font-weight: 800; line-height: 1.1; margin: 0; }
+  .foot { color: var(--muted); font-size: 18px; margin: 18px 0 0; }
+  .foot b { color: var(--ink); font-weight: 700; }
+
+  .val-hot { color: var(--red); }
+  .val-dry { color: var(--amber); }
+  .val-on { color: var(--green); }
+
+  /* Gauge kecil dengan zona histeresis */
+  .gauge { position: relative; height: 8px; border-radius: 4px; background: var(--card-2); margin: 22px 0 0; }
+  .seg { position: absolute; top: 0; bottom: 0; opacity: .85; }
+  .seg:first-child { border-radius: 4px 0 0 4px; }
+  .seg:last-of-type { border-radius: 0 4px 4px 0; }
+  .pin { position: absolute; top: -6px; width: 4px; height: 20px; background: var(--ink); border-radius: 2px; transform: translateX(-50%); transition: left .6s ease; opacity: 0; }
+  .ticks { position: relative; height: 20px; margin-top: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+
+  /* Badge mode siang / malam */
+  .badge { align-self: flex-start; background: var(--card-2); border-radius: 14px; padding: 14px 26px; font-size: 26px; font-weight: 800; letter-spacing: 0.01em; }
+  .badge.malam { color: var(--blue); }
+  .badge.siang { color: var(--amber); }
+  .divider { border: 0; border-top: 1px solid var(--line); margin: 22px 0 0; }
+
+  /* Lampu status */
+  .dots { display: flex; gap: 10px; margin-top: 14px; }
+  .dots i { width: 20px; height: 20px; border-radius: 50%; background: var(--card-2); display: block; }
+  .dots i.on-green { background: var(--green); box-shadow: 0 0 12px rgba(74,222,128,.55); }
+  .dots i.on-red { background: var(--red); box-shadow: 0 0 12px rgba(248,113,113,.6); }
+
+  .btn { align-self: flex-start; margin-top: 18px; background: #102a1f; border: 1px solid #1c4a33; color: var(--green); font-family: inherit; font-size: 17px; font-weight: 600; padding: 12px 20px; border-radius: 12px; cursor: pointer; }
+  .btn:hover { background: #14362a; }
+  .btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .btn.active { background: #1a3d2c; }
+
+  .chart-card { min-height: 0; }
+  .frame { position: relative; height: 320px; }
+
+  footer { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+  @media (max-width: 1100px) {
+    .row1 { grid-template-columns: 1fr 1fr; }
+    .row1 .card:first-child { grid-column: 1 / -1; }
+    .row2 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    header { padding: 20px; }
+    main { padding: 20px 16px 40px; }
+    .row1, .row2 { grid-template-columns: 1fr; gap: 16px; }
+    .grid { gap: 16px; margin-bottom: 16px; }
+    .card { padding: 24px; min-height: 0; }
+    .banner { padding: 16px 18px; font-size: 17px; }
+    .big { margin-bottom: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pin { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌱 Monitoring Smart Greenhouse</h1>
+</header>
+
+<main>
+  <div class="banner wait" id="banner" role="status" aria-live="polite">
+    <i></i><div><span id="bannerText">Menunggu data dari ESP32...</span> <small id="bannerAge"></small></div>
+  </div>
+
+  <section class="grid row1" aria-label="Pembacaan sensor">
+    <div class="card accent">
+      <p class="label">Suhu udara</p>
+      <div class="big" id="suhuBox"><span id="suhu">--</span></div>
+      <div class="gauge" id="gSuhu"></div>
+      <div class="ticks" id="tSuhu"></div>
+      <p class="foot">°C &nbsp;·&nbsp; kipas ON di <b>32</b> °C, OFF di <b>29</b> °C</p>
+    </div>
+
+    <div class="card">
+      <p class="label">Kelembapan</p>
+      <div class="mid" id="lembabBox" style="font-size:clamp(44px,5vw,64px)"><span id="lembab">--</span><span style="font-size:.5em;color:var(--muted)"> %</span></div>
+      <div class="gauge" id="gLembab"></div>
+      <div class="ticks" id="tLembab"></div>
+      <p class="foot" style="margin-top:auto">Fogger ON di bawah <b>60</b> %</p>
+    </div>
+
+    <div class="card">
+      <p class="label">Kondisi cahaya</p>
+      <div class="badge" id="mode">--</div>
+      <hr class="divider">
+      <p class="foot" id="modeNote" style="margin-top:18px">Menunggu data</p>
+    </div>
+  </section>
+
+  <section class="grid row2" aria-label="Status perangkat">
+    <div class="card">
+      <p class="label">Kipas</p>
+      <p class="mid" id="vKipas">--</p>
+      <div class="dots" id="dKipas"><i></i><i></i><i></i></div>
+      <p class="foot" style="margin-top:auto">2 kipas DC (relay 1)</p>
+    </div>
+    <div class="card">
+      <p class="label">Fogger</p>
+      <p class="mid" id="vFogger">--</p>
+      <div class="dots" id="dFogger"><i></i><i></i><i></i></div>
+      <p class="foot" style="margin-top:auto">Fogger ultrasonik (relay 2)</p>
+    </div>
+    <div class="card">
+      <p class="label">Buzzer</p>
+      <p class="mid" id="vBuzzer">--</p>
+      <button class="btn" id="btnSound" type="button">🔔 Aktifkan suara alarm</button>
+    </div>
+    <div class="card">
+      <p class="label">Update terakhir</p>
+      <p class="mid" id="vTime">--:--:--</p>
+      <p class="foot" id="vDate" style="margin-top:auto">Belum ada data</p>
+    </div>
+  </section>
+
+  <section class="card chart-card" aria-label="Riwayat">
+    <p class="label">Riwayat suhu &amp; kelembapan</p>
+    <div class="frame"><canvas id="chart" role="img" aria-label="Grafik suhu dan kelembapan"></canvas></div>
+    <p class="foot" id="histNote" style="font-size:15px">Data tersimpan tiap menit.</p>
+  </section>
+
+  <footer>Data dari Firebase Realtime Database. Halaman ini hanya membaca, tidak bisa mengubah alat.</footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// =====================================================================
+// ISI DENGAN KONFIGURASI WEB APP DARI FIREBASE
+// (Project settings -> General -> Your apps -> Web app -> firebaseConfig)
+// Kunci ini memang publik; keamanan diatur lewat Database Rules.
+// =====================================================================
+const firebaseConfig = {
+  apiKey: "ISI_API_KEY",
+  authDomain: "NAMA-PROJECT.firebaseapp.com",
+  databaseURL: "ISI_URL_REALTIME_DATABASE",
+  projectId: "NAMA-PROJECT",
+  appId: "ISI_APP_ID"
+};
+
+// Harus sama dengan nilai di program ESP32
+const T = { suhuOn: 32, suhuOff: 29, lembabOn: 60, lembabOff: 75 };
+const OFFLINE_AFTER = 30; // detik tanpa data baru dianggap offline
+
+const $ = id => document.getElementById(id);
+let lastTs = 0;
+let buzzerOn = false;
+
+/* ---------- Gauge zona histeresis ---------- */
+function buildGauge(gaugeId, tickId, min, max, zones, ticks) {
+  const g = $(gaugeId), t = $(tickId);
+  const pct = v => ((v - min) / (max - min)) * 100;
+  g.innerHTML = zones.map(z =>
+    `<div class="seg" style="left:${pct(z.from)}%;width:${pct(z.to) - pct(z.from)}%;background:${z.color}"></div>`
+  ).join("") + `<div class="pin"></div>`;
+  t.innerHTML = ticks.map(v => `<span style="left:${pct(v)}%">${v}</span>`).join("");
+  return v => {
+    const pin = g.querySelector(".pin");
+    pin.style.left = pct(Math.max(min, Math.min(max, v))) + "%";
+    pin.style.opacity = 1;
+  };
+}
+const setSuhuPin = buildGauge("gSuhu", "tSuhu", 15, 45, [
+  { from: 15, to: T.suhuOff, color: "#2f8f5b" },
+  { from: T.suhuOff, to: T.suhuOn, color: "#b8921f" },
+  { from: T.suhuOn, to: 45, color: "#c0504d" }
+], [15, T.suhuOff, T.suhuOn, 45]);
+const setLembabPin = buildGauge("gLembab", "tLembab", 20, 100, [
+  { from: 20, to: T.lembabOn, color: "#c0504d" },
+  { from: T.lembabOn, to: T.lembabOff, color: "#b8921f" },
+  { from: T.lembabOff, to: 100, color: "#2f8f5b" }
+], [20, T.lembabOn, T.lembabOff, 100]);
+
+/* ---------- Render data terkini ---------- */
+function setActuator(valId, dotsId, on, onText, offText) {
+  const v = $(valId);
+  v.textContent = on ? onText : offText;
+  v.classList.toggle("val-on", !!on);
+  const dots = $(dotsId);
+  if (dots) {
+    const d = dots.children;
+    d[0].className = on ? "" : "on-red";
+    d[1].className = "";
+    d[2].className = on ? "on-green" : "";
+  }
+}
+
+function render(d) {
+  if (!d) return;
+  lastTs = d.ts || 0;
+
+  $("suhu").textContent = Number(d.suhu).toFixed(1);
+  $("suhuBox").classList.toggle("val-hot", d.suhu >= T.suhuOn);
+  $("lembab").textContent = Number(d.lembab).toFixed(0);
+  $("lembabBox").classList.toggle("val-dry", d.lembab < T.lembabOn);
+  setSuhuPin(d.suhu);
+  setLembabPin(d.lembab);
+
+  const malam = !!d.malam;
+  const m = $("mode");
+  m.textContent = malam ? "MALAM" : "SIANG";
+  m.className = "badge " + (malam ? "malam" : "siang");
+  $("modeNote").textContent = malam
+    ? "Kipas dan fogger dimatikan. Alarm berbunyi jika suhu 32 °C ke atas."
+    : "Kipas dan fogger bekerja otomatis. Alarm dimatikan.";
+
+  setActuator("vKipas", "dKipas", d.kipas, "MENYALA", "MATI");
+  setActuator("vFogger", "dFogger", d.fogger, "MENYALA", "MATI");
+  setActuator("vBuzzer", null, d.buzzer, "BERBUNYI", "MATI");
+  $("vBuzzer").style.color = d.buzzer ? "var(--red)" : "";
+  buzzerOn = !!d.buzzer;
+
+  if (lastTs) {
+    const dt = new Date(lastTs * 1000);
+    $("vTime").textContent = dt.toLocaleTimeString("id-ID", { hour12: false });
+    $("vDate").textContent = dt.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  }
+  updateStatus();
+}
+
+/* ---------- Status koneksi ---------- */
+function updateStatus() {
+  if (!lastTs) return;
+  const age = Math.max(0, Math.round(Date.now() / 1000 - lastTs));
+  const online = age <= OFFLINE_AFTER;
+  $("banner").className = "banner " + (online ? "" : "off");
+  $("bannerText").textContent = online ? "ESP32 online - data real-time" : "ESP32 offline - tidak ada data baru";
+  $("bannerAge").textContent = age < 60 ? `(update ${age} detik lalu)` : `(update ${Math.floor(age / 60)} menit lalu)`;
+}
+setInterval(updateStatus, 1000);
+
+/* ---------- Suara alarm (opsional, perlu diaktifkan pengunjung) ---------- */
+let audioCtx = null, soundEnabled = false;
+$("btnSound").addEventListener("click", () => {
+  soundEnabled = !soundEnabled;
+  if (soundEnabled && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  $("btnSound").classList.toggle("active", soundEnabled);
+  $("btnSound").textContent = soundEnabled ? "🔔 Suara alarm aktif" : "🔔 Aktifkan suara alarm";
+});
+function beep() {
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = "square"; o.frequency.value = 880;
+  g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.35);
+}
+setInterval(() => { if (soundEnabled && buzzerOn) beep(); }, 1000);
+
+/* ---------- Grafik riwayat ---------- */
+Chart.defaults.color = "#8b98ad";
+Chart.defaults.font.family = "Poppins, system-ui, sans-serif";
+const chart = new Chart($("chart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "Suhu (°C)", data: [], borderColor: "#f87171", backgroundColor: "transparent", yAxisID: "y", tension: .3, pointRadius: 0, borderWidth: 3 },
+    { label: "Kelembapan (%)", data: [], borderColor: "#60a5fa", backgroundColor: "transparent", yAxisID: "y1", tension: .3, pointRadius: 0, borderWidth: 3 }
+  ]},
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+      y: { position: "left", title: { display: true, text: "°C" }, suggestedMin: 20, suggestedMax: 40, grid: { color: "#28354b" } },
+      y1: { position: "right", title: { display: true, text: "%" }, suggestedMin: 30, suggestedMax: 100, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+
+function renderHistory(val) {
+  const rows = Object.values(val || {}).filter(r => r && r.ts).sort((a, b) => a.ts - b.ts);
+  chart.data.labels = rows.map(r => new Date(r.ts * 1000).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }));
+  chart.data.datasets[0].data = rows.map(r => r.suhu);
+  chart.data.datasets[1].data = rows.map(r => r.lembab);
+  chart.update();
+  $("histNote").textContent = rows.length
+    ? `Menampilkan ${rows.length} data terakhir, tersimpan tiap menit.`
+    : "Belum ada riwayat. Data pertama muncul 1 menit setelah alat menyala.";
+}
+
+/* ---------- Mulai ---------- */
+try {
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  db.ref("greenhouse/latest").on("value", s => render(s.val()),
+    err => { $("banner").className = "banner off"; $("bannerText").textContent = "Gagal membaca data: " + err.code; });
+  db.ref("greenhouse/history").orderByChild("ts").limitToLast(60).on("value", s => renderHistory(s.val()));
+} catch (e) {
+  $("banner").className = "banner off";
+  $("bannerText").textContent = "Konfigurasi Firebase belum diisi";
+}
+</script>
+</body>
+</html>
